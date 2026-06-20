@@ -289,6 +289,53 @@ function getPetStage(clearedCount: number) {
   return 0
 }
 
+function getCategoryPromptHint(category: MissionCategory) {
+  const hints: Record<MissionCategory, string> = {
+    play: '初心者でも楽しく試せるように、明るくワクワクする表現にしてください。',
+    daily: '相手に失礼がなく、やさしく自然な日常の言葉にしてください。',
+    sns: '読みやすく、最初の一文で興味を持ってもらえる文章にしてください。',
+    work: '仕事で使えるように、分かりやすく、丁寧で信頼感のある文章にしてください。',
+    business: 'はじめて見る人にも魅力が伝わるように、安心感と行動したくなる理由を入れてください。',
+  }
+  return hints[category]
+}
+
+function makeDetailedPrompt(mission: Mission, answers: Record<string, string>) {
+  const answerLines = mission.fields
+    .map((field) => `- ${field.label}：${answers[field.key] || '未入力'}`)
+    .join('\n')
+  const draftPrompt = mission.makePrompt(answers)
+
+  return `あなたは、AI初心者にも分かりやすく文章を整えるサポート役です。
+次の内容をもとに、目的に合った文章やアイデアを作ってください。
+
+【今回やりたいこと】
+${mission.title}
+
+【目的】
+${mission.description}
+
+【入力した内容】
+${answerLines}
+
+【作ってほしいもの】
+上の内容を使って、すぐに使える完成形を作ってください。
+ただ短く答えるだけではなく、理由や使い方が分かるように、少し詳しく説明してください。
+
+【出力してほしい形】
+1. まず、完成版を1つ作ってください。
+2. 次に、別案を2つ出してください。
+3. それぞれの案について「どんな場面で使いやすいか」を一言で説明してください。
+4. 最後に、もっと良くするために追加で考えるとよいポイントを3つ教えてください。
+
+【文章の雰囲気】
+${getCategoryPromptHint(mission.category)}
+難しい言葉は避けて、AI初心者でもそのまま使える自然な文章にしてください。
+
+【追加の下書き条件】
+${draftPrompt}`
+}
+
 function loadProgress() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -357,7 +404,7 @@ function App() {
       result[field.key] = answers[field.key]?.trim() || '未入力'
       return result
     }, {})
-    setCreatedPrompt(currentMission.makePrompt(filledAnswers))
+    setCreatedPrompt(makeDetailedPrompt(currentMission, filledAnswers))
     setCopied(false)
     setCleared(false)
     setStep('result')
